@@ -1,0 +1,149 @@
+---
+title: "movie_lens_project"
+author: "Tomisin Layode"
+date: "2024-06-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(dplyr)
+```
+
+^
+```{r}
+#How many movies belong to a particular genre?
+
+movie_genre <- read_csv("MovieLens Ltd/movie.csv") %>% 
+  rename(MovieID = `movie id`,
+         Movie_Title = `movie title`,
+         Release_Date = `release date`) %>% 
+  select(-MovieID, -Release_Date) 
+# Replace 0s with NA if needed 
+#movie_genre[movie_genre == 0] <- NA
+
+#To count the number of movies in a genre
+genre_counts <- colSums(movie_genre[-1]) 
+
+genre_counts
+
+```
+
+```{r}
+#Which movies have more than one genre?
+movie_genre <- read_csv("MovieLens Ltd/movie.csv") %>% 
+  rename(MovieID = `movie id`,
+         Movie_Title = `movie title`,
+         Release_Date = `release date`) %>% 
+  select(-MovieID, -Release_Date) 
+
+# to create a new column that counts the number of genres each movie belongs to
+movie_genre <- movie_genre %>% 
+  rowwise() %>% 
+  mutate(genre_count = sum(c_across(Action:Western)))
+
+# To filter the movies that have more than one genre
+multiple_movie_genres <- movie_genre %>% 
+  filter(genre_count > 1) %>% 
+  select(Movie_Title, genre_count)
+
+multiple_movie_genres
+```
+```{r}
+#Which genres are most liked by the users?
+
+movie_genre <- read_csv("MovieLens Ltd/movie.csv") %>% 
+  rename(
+    MovieID = `movie id`,
+    Movie_Title = `movie title`,
+    Release_Date = `release date`
+  )
+
+ratings <- read_csv("MovieLens Ltd/ratings.csv") %>% 
+  rename(
+    MovieID = `movie id`,
+    UserID = `user id`,
+    Rating = `rating`,
+    Timestamp = `timestamp`
+  )
+
+# I am merging movie genres with ratings data
+movie_ratings <- left_join(ratings, movie_genre, by = "MovieID")
+
+# It is good to view the first few rows of the merged data to ensure it's loaded correctly
+head(movie_ratings)
+
+#Ths is too change the data from a wide format to a long one so it will be analyzed properly and also to adjest our preferred list on the table
+movie_ratings_long <- movie_ratings %>%
+  gather(key = "Genre", value = "Present", -c(MovieID, UserID, Rating, Timestamp, Movie_Title, Release_Date)) %>%
+  filter(Present == 1)
+
+# To calculate the average rating for each genre
+genre_ratings <- movie_ratings_long %>%
+  group_by(Genre) %>%
+  summarise(Average_Rating = mean(Rating, na.rm = TRUE)) %>%
+  arrange(desc(Average_Rating))
+
+
+genre_ratings
+
+  
+```
+
+```{r}
+#Which movies have been most preferred by users
+
+# To calculate the average rating for each movie
+movie_avg_ratings <- movie_ratings %>%
+  group_by(MovieID, Movie_Title) %>%
+  summarise(Average_Rating = mean(Rating, na.rm = TRUE), Rating_Count = n()) %>%
+  arrange(desc(Average_Rating))
+
+# This is to display the top movies based on average ratings
+top_movies <- movie_avg_ratings %>% filter(Rating_Count > 10) %>% head(20)
+
+#and i only filtered the top 20 to make it look more professional because when i loaded everything it was at the far end of the table which does'nt look nice.
+top_movies
+```
+
+```{r}
+#find which movies are rated most of the times
+
+# To count the number of ratings for each movie
+movie_rating_counts <- movie_ratings %>%
+  group_by(MovieID, Movie_Title) %>%
+  summarise(Rating_Count = n()) %>%
+  arrange(desc(Rating_Count))
+
+
+top_rated_movies <- head(movie_rating_counts, 10)
+
+top_rated_movies
+```
+```{r}
+#Can we extract some relationship between demographic details of the users and ratings for the movies?
+
+users <- read_csv("MovieLens Ltd/user.csv") %>% 
+  rename(
+    UserID = `user id`,
+    Age = `age`,
+    Gender = `gender`,
+    Occupation = `occupation`,
+    Zip_Code = `zip code`
+  )
+
+user_ratings <- left_join(ratings, users, by = "UserID")
+
+movie_ratings_users <- left_join(user_ratings, movie_genre, by = "MovieID")
+
+
+#I do not understanf from here
+```
+
+
